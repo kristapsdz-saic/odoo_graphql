@@ -12,6 +12,9 @@
         "product",
         "odoo_graphql"
     ],
+    "data": [
+        "templates/interface.xml",
+    ],
     "installable": True,
     "auto_install": False,
 }

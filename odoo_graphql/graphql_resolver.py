@@ -14,7 +14,7 @@ from graphql.language.ast import (
     FragmentSpreadNode,
     FragmentDefinitionNode
 )
-# from .utils import model2name, print_node as pn
+from .utils import model2name  # , print_node as pn
 from .introspection import handle_introspection
 import pytz
 from .graphql_definitions.utils import timezones
@@ -458,6 +458,9 @@ def get_type_serializer(model_name, fields, field_mapping={}):
         serializers.append((name, func))
     return serializers
 
+GRAPHQL_RESERVED_FIELDS = {
+    "__typename",
+}
 
 # Nb: the parameter "ids" is useful for relational fields
 def parse_model_field(
@@ -515,12 +518,20 @@ def parse_model_field(
             return [
                 {"id": rid} for rid in records.ids
             ], search_args
-    fields_names = [f.name.value for f in fields]
+    all_fields_names = {f.name.value for f in fields}
+    reserved_fields_name = all_fields_names & GRAPHQL_RESERVED_FIELDS
+    fields_names = list(all_fields_names - reserved_fields_name)
+
 
     # Get datas
     relational_data, fields_data = get_fields_data(model, fields)
     subgathers = relation_subgathers(records, relational_data, variables, field_mapping=field_mapping, fragments=fragments)
     records = records.read(fields_names, load=False)
+
+    if "__typename" in reserved_fields_name:
+        value = model2name(model._name)
+        for rec in records:
+            rec["__typename"] = value
 
     data = []
     for rec in records:
@@ -553,15 +564,26 @@ def get_fields_data(model, fields):
     """
         This function does 2 things:
         - Retrieve aliases for fields
-        - Split relational fields and the others
-          - For relational fields, also retrieve an empty record of the relation
+        - Split relational and non-relational fields
+          For relational fields, also retrieve an empty record of the relation
+        This is used to correctly re-assign the values to the correct key
     """
     relations = {}
     basic_fields = {}
     for field in fields:
         name = field.name.value
-        f = model._fields[name]
-        if f.relational:
+        f = model._fields.get(name)
+        if name in GRAPHQL_RESERVED_FIELDS or not f.relational:
+            alias = field.alias and field.alias.value or name
+            r = basic_fields.setdefault(
+                name,
+                (
+                    name,
+                    [],
+                ),
+            )
+            r[1].append(alias)
+        else:
             r = relations.setdefault(
                 name,
                 (
@@ -570,16 +592,9 @@ def get_fields_data(model, fields):
                     [],
                 ),
             )
+            # Nb: We need to keep the whole field object, not just the str
+            # graphql field contains a lot of data for later
             r[2].append(field)
-        else:
-            r = basic_fields.setdefault(
-                name,
-                (
-                    name,
-                    [],
-                ),
-            )
-            r[1].append(field.alias and field.alias.value or field.name.value)
 
     return relations.values(), basic_fields.values()
 
