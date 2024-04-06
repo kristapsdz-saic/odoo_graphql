@@ -92,6 +92,7 @@ class GraphQLHandler(models.TransientModel):
         operation=None,
     ):
         model_mapping = self.get_model_mapping()
+        _logger.info(model_mapping)
         field_mapping = self.get_fields_mapping()
         allowed_fields = self.get_allowed_fields()
         extra_variables = self.get_extra_variables()

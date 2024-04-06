@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="test-graphql" name="Test Graphql">
+        <t t-call="web.layout">
+            <!-- https://github.com/apollographql/apollo-client/issues/4595 -->
+            <!-- https://jsfiddle.net/Akryum/oyejk2qL/ -->
+            <!-- https://www.jsdelivr.com/package/npm/apollo-client-browser -->
+            <script src="https://unpkg.com/apollo-client-browser@1.9.0"></script>
+
+            <!-- <link href="/odoo_graphql/static/css/graphiql.min.css" rel="stylesheet" />
+            <script src="/odoo_graphql/static/js/graphiql.min.js"></script> -->
+
+            <script defer="">
+                const apolloClient = new Apollo.lib.ApolloClient({
+                    networkInterface: Apollo.lib.createNetworkInterface({
+                        // Edit: https://launchpad.graphql.com/nnnwvmq07
+                        uri: '/graphql',
+                        transportBatching: true,
+                    }),
+                    connectToDevTools: true,
+                })
+
+                const POSTS_QUERY = Apollo.gql`
+                    {
+                        ResPartner {
+                            id
+                            name
+                            parent_id {
+                                id
+                                name
+                            }
+                        }
+                    }
+                `
+                // res = await apolloClient.query({query: POSTS_QUERY}) 
+                apolloClient.query({query: POSTS_QUERY}).then((res) =&gt; {
+                    console.log(res)
+                })
+            </script>
+        </t>
+    </template>
+</odoo>
