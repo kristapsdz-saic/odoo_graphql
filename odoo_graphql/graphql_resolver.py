@@ -422,6 +422,8 @@ def _get_type_serializer_date(field, variables=None):
     fmt = data.get("format")
 
     def func(value):
+        if not value:
+            return False
         if fmt:
             return value.strftime(fmt)
         return value.toordinal()
